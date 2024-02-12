@@ -1,0 +1,31 @@
+CC=cl
+CXX=cl
+CFLAGS=/Ox -I.
+LIBS= winmm.lib psapi.lib gdi32.lib user32.lib advapi32.lib Setupapi.lib mpr.lib 
+
+all: msdos286.exe msdos386.exe msdos486.exe
+
+msdos286.exe: msdos286.obj
+	$(CXX) msdos286.obj /Femsdos286.exe $(LIBS)
+
+msdos386.exe: msdos386.obj
+	$(CXX) msdos386.obj /Femsdos386.exe $(LIBS)
+
+msdos486.exe: msdos486.obj
+	$(CXX) msdos486.obj /Femsdos486.exe $(LIBS)
+
+
+msdos286.obj: msdos.cpp
+	$(CXX) $(CFLAGS) -DHAS_I286 -c msdos.cpp /Fomsdos286.obj
+
+msdos386.obj: msdos.cpp
+	$(CXX) $(CFLAGS) -DHAS_I386 -c msdos.cpp /Fomsdos386.obj
+
+msdos486.obj: msdos.cpp
+	$(CXX) $(CFLAGS) -DHAS_I486 -c msdos.cpp /Fomsdos486.obj
+
+
+clean:
+	del msdos286.exe msdos286.obj
+	del msdos386.exe msdos386.obj
+	del msdos486.exe msdos486.obj

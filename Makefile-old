@@ -1,0 +1,14 @@
+CXX=g++
+CXXFLAGS=-O -DHAS_I486
+LIBS=-lwinmm -lpsapi -lgdi32 -luser32 -ladvapi32 -lSetupapi -lmpr -static
+OBJS=msdos.o
+EXE=msdos.exe
+
+$(EXE): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(EXE) $(OBJS) $(LIBS)
+
+msdos.o: msdos.cpp msdos.h
+	$(CXX) $(CXXFLAGS) -c msdos.cpp
+
+clean:
+	-$(RM) $(OBJS) $(EXE)
