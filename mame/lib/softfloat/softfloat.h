@@ -1,3 +1,4 @@
+#pragma once
 
 /*============================================================================
 
@@ -37,9 +38,6 @@ these four paragraphs for those parts of this code that are retained.
 | input or output the `floatx80' type will be defined.  The same applies to
 | the `FLOAT128' macro and the quadruple-precision format `float128'.
 *----------------------------------------------------------------------------*/
-#ifndef SOFTFLOAT_H
-#define SOFTFLOAT_H
-
 #define FLOATX80
 #define FLOAT128
 
@@ -246,9 +244,6 @@ flag floatx80_is_signaling_nan( floatx80 );
 int floatx80_fsin(floatx80 &a);
 int floatx80_fcos(floatx80 &a);
 int floatx80_ftan(floatx80 &a);
-
-floatx80 floatx80_fpatan(floatx80 a, floatx80 b);
-floatx80 floatx80_fatan(floatx80 a);
 
 floatx80 floatx80_flognp1(floatx80 a);
 floatx80 floatx80_flogn(floatx80 a);
@@ -463,5 +458,4 @@ INLINE float128
 	return roundAndPackFloat128( zSign, zExp, zSig0, zSig1, zSig2 );
 
 }
-#endif
 #endif

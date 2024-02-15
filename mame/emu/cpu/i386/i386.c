@@ -158,6 +158,7 @@ static void i386_load_segment_descriptor(int segment )
 		{
 			m_sreg[segment].base = m_sreg[segment].selector << 4;
 			m_sreg[segment].limit = 0xffff;
+//			m_sreg[segment].flags = (segment == CS) ? 0x00fb : 0x00f3;
 			m_sreg[segment].flags = 0x00f3;
 			m_sreg[segment].d = 0;
 			m_sreg[segment].valid = true;
@@ -652,7 +653,7 @@ static void i386_trap(int irq, int irq_gate, int trap_level)
 	}
 #endif
 	if(irq == 6) {
-		m_int6h_skip_eip = m_eip;
+		msdos_int6h_eip = m_eip;
 	}
 
 	if( !(PROTECTED_MODE) )
@@ -693,7 +694,15 @@ static void i386_trap(int irq, int irq_gate, int trap_level)
 		}
 		if(trap_level >= 3)
 		{
+//			UINT16 offset = READ16(0x467);
+//			UINT16 selector = READ16(0x469);
 			logerror("IRQ: Triple fault. CPU reset.\n");
+//			CPU_RESET_CALL(CPU_MODEL);
+//			m_sreg[CS].selector = selector;
+//			m_performed_intersegment_jump = 1;
+//			m_eip = offset;
+//			i386_load_segment_descriptor(CS);
+//			CHANGE_PC(m_eip);
 			kbd_reset();
 			return;
 		}
@@ -3447,6 +3456,8 @@ static CPU_EXECUTE( i386 )
 
 		m_segment_prefix = 0;
 #ifdef USE_DEBUGGER
+		add_cpu_trace(m_pc, m_sreg[CS].selector, m_eip);
+		m_prev_pc = m_pc;
 		m_prev_cs = m_sreg[CS].selector;
 #endif
 		m_prev_eip = m_eip;

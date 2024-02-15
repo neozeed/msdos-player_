@@ -3,7 +3,7 @@ CXX=cl
 CFLAGS=/Ox -I.
 LIBS= winmm.lib psapi.lib gdi32.lib user32.lib advapi32.lib Setupapi.lib mpr.lib 
 
-all: msdos286.exe msdos386.exe msdos486.exe
+all: msdos286.exe msdos386.exe msdos486.exe msdos_ppro.exe
 
 msdos286.exe: msdos286.obj
 	$(CXX) msdos286.obj /Femsdos286.exe $(LIBS)
@@ -13,6 +13,12 @@ msdos386.exe: msdos386.obj
 
 msdos486.exe: msdos486.obj
 	$(CXX) msdos486.obj /Femsdos486.exe $(LIBS)
+
+msdos_ppro.exe: msdos_ppro.obj
+	$(CXX) msdos_ppro.obj /Femsdos_ppro.exe $(LIBS)
+
+msdos_ia32.exe: msdos_ia32.obj
+	$(CXX) msdos_ia32.obj /Femsdos_ia32.exe $(LIBS)
 
 
 msdos286.obj: msdos.cpp
@@ -24,8 +30,16 @@ msdos386.obj: msdos.cpp
 msdos486.obj: msdos.cpp
 	$(CXX) $(CFLAGS) -DHAS_I486 -c msdos.cpp /Fomsdos486.obj
 
+msdos_ppro.obj: msdos.cpp
+	$(CXX) $(CFLAGS) -DHAS_PENTIUM_PRO -c msdos.cpp /Fomsdos_ppro.obj
+
+msdos_ia32.obj: msdos.cpp
+	$(CXX) $(CFLAGS) -DHAS_IA32 -c msdos.cpp /Fomsdos_ia32.obj
+
 
 clean:
 	del msdos286.exe msdos286.obj
 	del msdos386.exe msdos386.obj
 	del msdos486.exe msdos486.obj
+	del msdos_ppro.exe msdos_ppro.obj
+	del msdos_ia32.exe msdos_ia32.obj

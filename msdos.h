@@ -8,126 +8,6 @@
 #ifndef _MSDOS_H_
 #define _MSDOS_H_
 
-#define WIN32_LEAN_AND_MEAN
-#ifndef _WIN32_WINNT
-//#define _WIN32_WINNT 0x400	// Windows NT 4.0
-//#define _WIN32_WINNT 0x500	// Windows 2000
-#define _WIN32_WINNT 0x501	// Windows XP
-#endif
-#include <windows.h>
-#ifdef __MINGW32__
-#include <initguid.h>
-#endif
-#include <winioctl.h>
-#ifdef _MBCS
-#include <mbstring.h>
-#endif
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-#include <conio.h>
-#include <locale.h>
-#include <math.h>
-#include <dos.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <io.h>
-#include <sys/locking.h>
-#include <mbctype.h>
-#include <direct.h>
-#include <errno.h>
-#include <tlhelp32.h>
-#include <psapi.h>
-#include <setupapi.h>
-#include <winsock.h>
-//#include <fileapi.h>	//needs newer C++
-//#include <intrin.h>
-//#include <x86intrin.h>
-#include <stdint.h>
-#include <mmsystem.h>
-
-#ifdef _DEBUG
-// _malloca is defined in both intrin.h and crtdbg.h
-#ifdef _malloca
-#undef _malloca
-#endif
-#define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#define calloc(c, s) _calloc_dbg(c, s, _NORMAL_BLOCK, __FILE__, __LINE__)
-#define malloc(s) _malloc_dbg(s, _NORMAL_BLOCK, __FILE__, __LINE__)
-#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
-#endif
-
-// variable scope of 'for' loop for Microsoft Visual C++ 6.0
-#if defined(_MSC_VER) && (_MSC_VER == 1200)
-#define for if(0);else for
-#endif
-
-// disable warnings for Microsoft Visual C++ 2005 or later
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-#pragma warning( disable : 4819 )
-#pragma warning( disable : 4995 )
-#pragma warning( disable : 4996 )
-// for MAME i86/i386
-#pragma warning( disable : 4018 )
-#pragma warning( disable : 4065 )
-#pragma warning( disable : 4146 )
-#pragma warning( disable : 4244 )
-#pragma warning( disable : 4267 )
-#endif
-
-// endian
-#if !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
-	#if defined(__BYTE_ORDER) && (defined(__LITTLE_ENDIAN) || defined(__BIG_ENDIAN))
-		#if __BYTE_ORDER == __LITTLE_ENDIAN
-			#define __LITTLE_ENDIAN__
-		#elif __BYTE_ORDER == __BIG_ENDIAN
-			#define __BIG_ENDIAN__
-		#endif
-	#elif defined(WORDS_LITTLEENDIAN)
-		#define __LITTLE_ENDIAN__
-	#elif defined(WORDS_BIGENDIAN)
-		#define __BIG_ENDIAN__
-	#endif
-#endif
-#if !defined(__LITTLE_ENDIAN__) && !defined(__BIG_ENDIAN__)
-	// Microsoft Visual C++
-	#define __LITTLE_ENDIAN__
-#endif
-
-// compat for mingw32 headers
-#ifndef COMMON_LVB_UNDERSCORE
-#define COMMON_LVB_UNDERSCORE 0x8000
-#endif
-
-// type definition
-#ifndef UINT8
-typedef unsigned char UINT8;
-#endif
-#ifndef UINT16
-typedef unsigned short UINT16;
-#endif
-#ifndef UINT32
-typedef unsigned int UINT32;
-#endif
-#ifndef UINT64
-typedef unsigned long long UINT64;
-#endif
-#ifndef INT8
-typedef signed char INT8;
-#endif
-#ifndef INT16
-typedef signed short INT16;
-#endif
-#ifndef INT32
-typedef signed int INT32;
-#endif
-#ifndef INT64
-typedef signed long long INT64;
-#endif
-
 #pragma pack(1)
 typedef union {
 	UINT32 dw;
@@ -140,12 +20,6 @@ typedef union {
 	} w;
 } PAIR32;
 #pragma pack()
-
-// MAME i86/i386
-
-// src/emu/devcpu.h
-// offsets and addresses are 32-bit (for now...)
-typedef UINT32	offs_t;
 
 /* ----------------------------------------------------------------------------
 	FIFO buffer
@@ -194,6 +68,16 @@ public:
 		}
 		return(val);
 	}
+	int read_not_remove(int pt) {
+		if(pt >= 0 && pt < cnt) {
+			pt += rpt;
+			if(pt >= size) {
+				pt -= size;
+			}
+			return buf[pt];
+		}
+		return(0);
+	}
 	int count() {
 		return(cnt);
 	}
@@ -214,7 +98,10 @@ public:
 	MAME i86/i386
 ---------------------------------------------------------------------------- */
 
-#if defined(HAS_I86)
+#if defined(HAS_IA32)
+//	#define CPU_MODEL ia32
+	#define SUPPORT_FPU
+#elif defined(HAS_I86)
 	#define CPU_MODEL i8086
 #elif defined(HAS_I186)
 	#define CPU_MODEL i80186
@@ -224,8 +111,6 @@ public:
 	#define CPU_MODEL i80286
 #elif defined(HAS_I386)
 	#define CPU_MODEL i386
-#elif defined(USE_WHPX)
-	#define CPU_MODEL whpx
 #else
 //	#if defined(HAS_I386SX)
 //		#define CPU_MODEL i386SX
@@ -252,6 +137,9 @@ public:
 		#endif
 		#define SUPPORT_FPU
 //	#endif
+#endif
+
+#if !(defined(HAS_I86) || defined(HAS_I186) || defined(HAS_V30) || defined(HAS_I286) || defined(HAS_I386))
 	#define HAS_I386
 #endif
 
@@ -259,41 +147,17 @@ public:
 	debugger
 ---------------------------------------------------------------------------- */
 
-//#define USE_DEBUGGER
-
 #ifdef USE_DEBUGGER
-#define MAX_BREAK_POINTS	8
-
 bool now_debugging = false;
 bool now_going = false;
 bool now_suspended = false;
 bool force_suspend = false;
-
-typedef struct {
-	struct {
-		UINT32 addr;
-		UINT32 seg;
-		UINT32 ofs;
-		int status;	// 0 = none, 1 = enabled, other = disabled
-	} table[MAX_BREAK_POINTS];
-	int hit;
-} break_point_t;
 
 break_point_t break_point = {0};
 break_point_t rd_break_point = {0};
 break_point_t wr_break_point = {0};
 break_point_t in_break_point = {0};
 break_point_t out_break_point = {0};
-
-typedef struct {
-	struct {
-		int int_num;
-		UINT8 ah, ah_registered;
-		UINT8 al, al_registered;
-		int status;	// 0 = none, 1 = enabled, other = disabled
-	} table[MAX_BREAK_POINTS];
-	int hit;
-} int_break_point_t;
 
 int_break_point_t int_break_point = {0};
 
@@ -302,18 +166,20 @@ FILE *fi_debugger = NULL;
 
 // these read/write interfaces do not check break points,
 // debugger should use them not to hit any break point mistakely
-UINT8 debugger_read_byte(offs_t byteaddress);
-UINT16 debugger_read_word(offs_t byteaddress);
-UINT32 debugger_read_dword(offs_t byteaddress);
-void debugger_write_byte(offs_t byteaddress, UINT8 data);
-void debugger_write_word(offs_t byteaddress, UINT16 data);
-void debugger_write_dword(offs_t byteaddress, UINT32 data);
-UINT8 debugger_read_io_byte(offs_t addr);
-UINT16 debugger_read_io_word(offs_t addr);
-UINT32 debugger_read_io_dword(offs_t addr);
-void debugger_write_io_byte(offs_t addr, UINT8 val);
-void debugger_write_io_word(offs_t addr, UINT16 val);
-void debugger_write_io_dword(offs_t addr, UINT32 val);
+UINT8 debugger_read_byte(UINT32 byteaddress);
+UINT16 debugger_read_word(UINT32 byteaddress);
+UINT32 debugger_read_dword(UINT32 byteaddress);
+void debugger_write_byte(UINT32 byteaddress, UINT8 data);
+void debugger_write_word(UINT32 byteaddress, UINT16 data);
+void debugger_write_dword(UINT32 byteaddress, UINT32 data);
+UINT8 debugger_read_io_byte(UINT32 addr);
+UINT16 debugger_read_io_word(UINT32 addr);
+UINT32 debugger_read_io_dword(UINT32 addr);
+void debugger_write_io_byte(UINT32 addr, UINT8 val);
+void debugger_write_io_word(UINT32 addr, UINT16 val);
+void debugger_write_io_dword(UINT32 addr, UINT32 val);
+
+void add_cpu_trace(UINT32 pc, UINT16 cs, UINT32 eip);
 #endif
 
 /* ----------------------------------------------------------------------------
@@ -321,6 +187,14 @@ void debugger_write_io_dword(offs_t addr, UINT32 val);
 ---------------------------------------------------------------------------- */
 
 #define USE_SERVICE_THREAD
+
+UINT16 CPU_AX_in_service;
+UINT16 CPU_CX_in_service;
+UINT16 CPU_DX_in_service;
+UINT32 CPU_DS_BASE_in_service;
+
+void prepare_service_loop();
+void cleanup_service_loop();
 
 #ifdef USE_SERVICE_THREAD
 CRITICAL_SECTION input_crit_sect;
@@ -333,7 +207,6 @@ DWORD main_thread_id;
 void start_service_loop(LPTHREAD_START_ROUTINE lpStartAddress);
 void finish_service_loop();
 #endif
-UINT32 done_ax;
 
 bool in_service_29h = false;
 
@@ -341,7 +214,7 @@ bool in_service_29h = false;
 	PC/AT hardware emulation
 ---------------------------------------------------------------------------- */
 
-#define SUPPORT_GRAPHIC_SCREEN
+//#define SUPPORT_GRAPHIC_SCREEN
 
 void hardware_init();
 void hardware_finish();
@@ -350,9 +223,86 @@ void hardware_run();
 void hardware_run_cpu();
 void hardware_update();
 
+// drive
+
+typedef struct {
+	int initialized;
+	int valid;
+	DISK_GEOMETRY geometry;
+	
+	int is_fdd()
+	{
+		if(initialized && valid) {
+			switch(geometry.MediaType) {
+			case F5_1Pt2_512:
+			case F3_1Pt44_512:
+			case F3_2Pt88_512:
+			case F3_20Pt8_512:
+			case F3_720_512:
+			case F5_360_512:
+			case F5_320_512:
+			case F5_320_1024:
+			case F5_180_512:
+			case F5_160_512:
+			case F3_120M_512:
+			case F3_640_512:
+			case F5_640_512:
+			case F5_720_512:
+			case F3_1Pt2_512:
+			case F3_1Pt23_1024:
+			case F5_1Pt23_1024:
+			case F3_128Mb_512:
+			case F3_230Mb_512:
+			case F8_256_128:
+			case F3_200Mb_512:
+			case F3_240M_512:
+			case F3_32M_512:
+				return(1);
+			}
+		}
+		return(0);
+	}
+	int head_num()
+	{
+		if(initialized && valid) {
+			switch(geometry.MediaType) {
+			case F5_1Pt2_512:
+			case F3_1Pt44_512:
+			case F3_2Pt88_512:
+			case F3_20Pt8_512:
+			case F3_720_512:
+			case F5_360_512:
+			case F5_320_512:
+			case F5_320_1024:
+//			case F5_180_512:
+//			case F5_160_512:
+			case F3_120M_512:
+			case F3_640_512:
+			case F5_640_512:
+			case F5_720_512:
+			case F3_1Pt2_512:
+			case F3_1Pt23_1024:
+			case F5_1Pt23_1024:
+			case F3_128Mb_512:
+			case F3_230Mb_512:
+//			case F8_256_128:
+			case F3_200Mb_512:
+			case F3_240M_512:
+			case F3_32M_512:
+				return(2);
+			default:
+				return(1);
+			}
+		}
+		return(0);
+	}
+} drive_param_t;
+
+drive_param_t drive_params[26] = {0};
+
 // memory
 
-#if defined(HAS_I386) || defined(USE_WHPX)
+#if defined(HAS_I386)
 	#define ADDR_MASK 0xffffffff
 	#define MAX_MEM 0x2000000	/* 32MB */
 #elif defined(HAS_I286)
@@ -362,10 +312,11 @@ void hardware_update();
 	#define ADDR_MASK 0xfffff
 	#define MAX_MEM 0x100000	/* 1MB */
 #endif
+
 #ifdef _MSC_VER
 __declspec(align(4096))
 #endif
-UINT8 mem[MAX_MEM + 15] 
+UINT8 mem[MAX_MEM + 16]
 #ifdef __GNUC__
 __attribute__ ((aligned(4096)))
 #endif
@@ -401,7 +352,6 @@ void ems_reallocate_pages(int handle, int pages);
 void ems_release_pages(int handle);
 void ems_map_page(int physical, int handle, int logical);
 void ems_unmap_page(int physical);
-static char *ems_addr(UINT16 addr);
 
 // dma
 
@@ -549,7 +499,8 @@ typedef struct {
 	UINT8 modem_ctrl;
 	bool set_brk, set_rts, set_dtr;
 	bool prev_set_brk;
-//	bool prev_set_rts, prev_set_dtr;
+	bool prev_set_rts, prev_set_dtr;
+	DWORD set_brk_time;
 	
 	UINT8 line_stat_buf, line_stat_err;
 	UINT8 modem_stat, prev_modem_stat;
@@ -566,6 +517,7 @@ typedef struct {
 	CRITICAL_SECTION csRecvData;
 	CRITICAL_SECTION csLineCtrl;
 	CRITICAL_SECTION csLineStat;
+	CRITICAL_SECTION csSetBreak;
 	CRITICAL_SECTION csModemCtrl;
 	CRITICAL_SECTION csModemStat;
 } sio_mt_t;
@@ -581,6 +533,7 @@ UINT8 sio_read(int c, UINT32 addr);
 void sio_update(int c);
 void sio_update_irq(int c);
 DWORD WINAPI sio_thread(void *lpx);
+bool sio_wait_sending_complete(int c);
 
 // cmos
 
@@ -598,68 +551,45 @@ UINT8 kbd_status;
 UINT8 kbd_command;
 
 void kbd_init();
+void kbd_reset();
 UINT8 kbd_read_data();
 void kbd_write_data(UINT8 val);
 UINT8 kbd_read_status();
 void kbd_write_command(UINT8 val);
-void kbd_reset();
+
+// beep
+
+WAVEFORMATEX wfe;
+HWAVEOUT hWaveOut;
+WAVEHDR whdr[2];
+double beep_freq;
+bool beep_playing;
+
+void beep_init();
+void beep_finish();
+void beep_release();
+void beep_update();
 
 // crtc
 
 UINT8 crtc_addr = 0;
-UINT8 crtc_regs[30] = {0};
-UINT8 crtc_changed[30] = {0};
+UINT8 crtc_regs[16] = {0};
+UINT8 crtc_changed[16] = {0};
 
 #ifdef SUPPORT_GRAPHIC_SCREEN
-HANDLE running = 0;
-int vga_width;
-int vga_pitch;
-int vga_height;
-float vga_widthscl;
-float vga_heightscl;
-int vga_bpp;
-UINT32 vga_latch;
-uint64_t vsync = 0;
-HDC vgadc = 0;
-BOOL vga_graph = false;
-
-// dac
-UINT8 dac_ridx = 0;
-UINT8 dac_widx = 0;
-RGBQUAD dac_col[256] = {0};
-int dac_rcol = 0;
-int dac_wcol = 0;
-int dac_dirty = 0;
-
-// seq
-UINT8 seq_addr = 0;
-UINT8 seq_regs[5] = {0};
-
-// grph
-UINT8 grph_addr = 0;
-UINT8 grph_regs[9] = {0};
-
-// attr
-UINT8 attr_addr = 0;
-UINT8 attr_regs[0x14] = {0};
-
 // vram
-#define VRAM_SIZE 256 * 1024
-UINT8 vram[VRAM_SIZE];
-#define VGA_VRAM_LAST 0xbffff
-
-static UINT32 vga_read(offs_t addr, int size);
-static void vga_write(offs_t addr, UINT32 data, int size);
+static UINT32 vga_read(UINT32 addr, int size);
+static void vga_write(UINT32 addr, UINT32 data, int size);
 #endif
 
 /* ----------------------------------------------------------------------------
 	MS-DOS virtual machine
 ---------------------------------------------------------------------------- */
 
-#if defined(HAS_I386) || defined(USE_WHPX)
+#if defined(HAS_I386)
 #define SUPPORT_VCPI
 #endif
-#if defined(HAS_I286) || defined(HAS_I386) || defined(USE_WHPX)
+#if defined(HAS_I286) || defined(HAS_I386)
 #define SUPPORT_XMS
 //#define SUPPORT_HMA
 #endif
@@ -713,36 +643,36 @@ static void vga_write(offs_t addr, UINT32 data, int size);
 #ifdef SUPPORT_GRAPHIC_SCREEN
 #define MEMORY_END	0xa0000
 #define VGA_VRAM_TOP	0xa0000
+#define VGA_VRAM_LAST	0xbffff
+#define VGA_VRAM_END	0xc0000
 #else
-#define MEMORY_END	0xb0000
+#define MEMORY_END	0xb8000
 #endif
 #define TEXT_VRAM_TOP	0xb8000
-#define MDA_VRAM_TOP	0xb0000
 #define EMS_TOP		0xc0000
 #define EMS_SIZE	0x10000
 UINT32 UMB_TOP = EMS_TOP; // EMS is disabled
-#define UMB_END		0xf7f00
+#define UMB_END		0xf8000
 #define SHADOW_BUF_TOP	0xf8000
 // text vram size: 80x25x2 = 4000 = 0fa0h
 // fffa0h-fffefh can be used for dummy routines
-#define DUMMY_TOP	0xfffb0
+#define DUMMY_TOP	0xfffc0
 //#define EMB_TOP	0x10fff0
 #define EMB_TOP		0x110000 // align to 4KB
 #define EMB_END		MAX_MEM
 
-#define IRET_TOP	UMB_END
-#define IRET_SIZE	0x100
+UINT32 IRET_TOP = 0;
+//#define IRET_SIZE	0x100	// moved into common.h
 UINT32 XMS_TOP = 0;
 // XMS_TOP + 0x000	EMMXXXX0 driver
 // XMS_TOP + 0x012	EMS dummy routine
 // XMS_TOP + 0x015	XMS dummy routine
 // XMS_TOP + 0x018	EMMXXXX0 ioctrl recv buffer
 // XMS_TOP + 0x1b9	EMMXXXX0 driver dummy routine (at XMS_TOP + XMS_SIZE - 7)
-// XMS_TOP + 0x1c0	int 2eh tramopoline
-#define XMS_SIZE	0x1d0	/* 18 + 6 + 413 + 7 */
+#define XMS_SIZE	0x1c0	/* 18 + 6 + 413 + 7 */
 
 //#define ENV_SIZE	0x800
-#define ENV_SIZE	0x1000
+#define ENV_SIZE	0x2000
 #define PSP_SIZE	0x100
 #define PSP_SYSTEM	0x0008
 
@@ -823,7 +753,8 @@ typedef struct {
 	UINT8 reserved_3[2];
 	UINT8 ex_fcb[7];
 	UINT8 fcb1[16];
-	UINT8 fcb2[20];
+	UINT8 fcb2[16];
+	UINT8 reserved_4[4];
 	UINT8 buffer[128];
 } psp_t;
 #pragma pack()
@@ -1131,16 +1062,19 @@ static const struct {
 	int mode;
 	int in;
 	int out;
+	const char *str;
 } file_mode[] = {
-	{ _O_RDONLY | _O_BINARY, 1, 0 },
-	{ _O_WRONLY | _O_BINARY, 0, 1 },
-	{ _O_RDWR   | _O_BINARY, 1, 1 },
+	{ _O_RDONLY | _O_BINARY, 1, 0, "r"  },
+	{ _O_WRONLY | _O_BINARY, 0, 1, "w"  },
+	{ _O_RDWR   | _O_BINARY, 1, 1, "rw" },
 };
 
 typedef struct {
 	UINT16 psp;
 	char module_dir[MAX_PATH];
-	char module_name[MAX_PATH];
+//#ifdef USE_DEBUGGER
+	char module_path[MAX_PATH];
+//#endif
 	PAIR32 dta;
 	UINT8 switchar;
 	UINT8 verify;
@@ -1206,8 +1140,15 @@ void msdos_finish();
 
 DWORD dwConsoleMode = 0;
 
+UINT input_cp, output_cp;
+int multibyte_cp;
+bool restore_input_cp = false;
+bool restore_output_cp = false;
+bool restore_multibyte_cp = false;
+
 CONSOLE_CURSOR_INFO ci_old;
 CONSOLE_CURSOR_INFO ci_new;
+CONSOLE_FONT_INFOEX fi_new;
 int font_width = 10;
 int font_height = 18;
 
@@ -1218,7 +1159,9 @@ COORD scr_buf_size;
 COORD scr_buf_pos;
 int scr_width, scr_height;
 int scr_top;
-bool restore_console_on_exit = false;
+bool restore_console_size = false;
+bool restore_console_cursor = false;
+bool restore_console_font = false;
 bool cursor_moved;
 bool cursor_moved_by_crtc;
 
@@ -1298,9 +1241,6 @@ typedef struct {
 } mouse_t;
 
 mouse_t mouse;
-bool mouse_ps2_irq;
-bool mouse_capture = false;
-HWND mouse_window;
 
 UINT16 mouse_push_ax;
 UINT16 mouse_push_bx;
@@ -1321,7 +1261,7 @@ bool is_hma_used_by_int_2fh = false;
 #ifdef SUPPORT_XMS
 typedef struct emb_handle_s {
 	UINT32 handle; // 0=allocated
-	offs_t address;
+	UINT32 address;
 	int size_kb;
 	int lock;
 	struct emb_handle_s *prev;
